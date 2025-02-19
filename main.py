@@ -12,16 +12,13 @@ logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
-# Ortam değişkenlerini al
 BYBIT_API_KEY = os.environ.get("BYBIT_API_KEY")
 BYBIT_API_SECRET = os.environ.get("BYBIT_API_SECRET")
 
-# Ortam değişkenleri kontrolü
 if not BYBIT_API_KEY or not BYBIT_API_SECRET:
     logging.error("BYBIT_API_KEY veya BYBIT_API_SECRET ortam değişkenleri ayarlanmadı!")
     exit(1)
 
-# Bybit bakiye bilgisini alma fonksiyonu
 def get_bybit_balance():
     logging.info("get_bybit_balance fonksiyonu çağrıldı.")
     timestamp = str(int(time.time() * 1000))
@@ -36,40 +33,38 @@ def get_bybit_balance():
         "X-BYBIT-RECV-WINDOW": recv_window
     }
 
-    url = "https://api-testnet.bybit.com/v5/account/wallet-balance"  # Testnet URL'i
+    url = "https://api-testnet.bybit.com/v5/account/wallet-balance"
     response = requests.get(url, headers=headers)
 
-    # Hata kontrolü
     if response.status_code != 200:
         error_message = f"Bybit API hatası: {response.status_code}, {response.text}"
         logging.error(error_message)
-        return jsonify({"error": error_message}), response.status_code
+        return jsonify({"error": error_message, "response_text": response.text}), response.status_code # response.text eklendi
 
     try:
         bybit_response = response.json()
 
-        # Yanıtı kontrol et ve sadece gerekli verileri al
-        if bybit_response.get("ret_code") == 0:  # Başarılı yanıt
+        if bybit_response.get("ret_code") == 0:
             result = bybit_response.get("result", {})
-            usdt_balance = result.get("USDT", {}).get("available", 0)  # USDT bakiyesi
-            return {"balance": usdt_balance}  # Sadece bakiyeyi döndür
-        else:  # Hatalı yanıt
+            usdt_balance = result.get("USDT", {}).get("available", 0)
+            return {"balance": usdt_balance}
+        else:
             error_message = f"Bybit API hatası: {bybit_response.get('ret_msg', 'Bilinmeyen Hata')}"
             logging.error(error_message)
-            return jsonify({"error": error_message}), 500
+            return jsonify({"error": error_message, "bybit_response": bybit_response}), 500 # bybit_response eklendi
 
-    except (KeyError, TypeError) as e:  # Veri işleme hatası
+    except (KeyError, TypeError) as e:
         error_message = f"Veri işleme hatası: {e}, {response.text}"
         logging.error(error_message)
-        return jsonify({"error": error_message}), 500
-    except json.JSONDecodeError as e:  # JSON hatası
+        return jsonify({"error": error_message, "response_text": response.text}), 500 # response.text eklendi
+    except json.JSONDecodeError as e:
         error_message = f"JSONDecodeError: {e}, {response.text}"
         logging.error(error_message)
-        return jsonify({"error": error_message}), 500
-    except Exception as e:  # Diğer hatalar
+        return jsonify({"error": error_message, "response_text": response.text}), 500 # response.text eklendi
+    except Exception as e:
         error_message = f"Bilinmeyen bir hata oluştu: {e}, {response.text}"
         logging.error(error_message)
-        return jsonify({"error": error_message}), 500
+        return jsonify({"error": error_message, "response_text": response.text}), 500 # response.text eklendi
 
 # Bybit emir verme fonksiyonu
 def place_bybit_order(symbol, side, qty, price):
@@ -105,17 +100,14 @@ def place_bybit_order(symbol, side, qty, price):
         logging.error(f"JSONDecodeError: {e}, Response Text: {response.text}")
         return jsonify({"error": "JSONDecodeError", "message": str(e)}), 500
 
-# Ana sayfa rotası
 @app.route("/")
 def index():
     return "Merhaba Dünya! Bu benim ana sayfam!"
 
-# Bakiye sorgulama rotası
 @app.route("/balance", methods=["GET"])
 def get_balance():
     logging.info("/balance endpoint çağrıldı.")
     return jsonify(get_bybit_balance())
-
 # TradingView webhook rotası
 @app.route("/tradingview", methods=["POST"])
 def tradingview_webhook():
