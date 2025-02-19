@@ -3,3 +3,4 @@ requests
 pybit
 gunicorn
 uvicorn
+waitress
