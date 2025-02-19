@@ -24,7 +24,12 @@ def get_bybit_balance():
     timestamp = str(int(time.time() * 1000))
     recv_window = "5000"
     params = f"api_key={BYBIT_API_KEY}&recv_window={recv_window}&timestamp={timestamp}"
-    sign = hmac.new(BYBIT_API_SECRET.encode(), params.encode(), hashlib.sha256).hexdigest()
+
+    # UTF-8 kodlaması kullanın (ÇOK ÖNEMLİ)
+    secret_bytes = BYBIT_API_SECRET.encode('utf-8')
+    params_bytes = params.encode('utf-8')
+
+    sign = hmac.new(secret_bytes, params_bytes, hashlib.sha256).hexdigest()
 
     headers = {
         "X-BYBIT-API-KEY": BYBIT_API_KEY,
@@ -77,7 +82,12 @@ def place_bybit_order(symbol, side, qty, price):
     timestamp = str(int(time.time() * 1000))
     recv_window = "5000"
     params = f"api_key={BYBIT_API_KEY}&symbol={symbol}&side={side}&order_type=Limit&qty={qty}&price={price}&time_in_force=GoodTillCancel&recv_window={recv_window}&timestamp={timestamp}"
-    sign = hmac.new(BYBIT_API_SECRET.encode(), params.encode(), hashlib.sha256).hexdigest()
+
+    # UTF-8 kodlaması kullanın (ÇOK ÖNEMLİ)
+    secret_bytes = BYBIT_API_SECRET.encode('utf-8')
+    params_bytes = params.encode('utf-8')
+
+    sign = hmac.new(secret_bytes, params_bytes, hashlib.sha256).hexdigest()
 
     headers = {
         "X-BYBIT-API-KEY": BYBIT_API_KEY,
@@ -112,8 +122,7 @@ def index():
 @app.route("/balance", methods=["GET"])
 def get_balance():
     logging.info("/balance endpoint çağrıldı.")
-    # Artık get_bybit_balance() zaten jsonify edilmiş response veya dictionary döndürüyor.
-    return get_bybit_balance()
+    return get_bybit_balance()  # Doğrudan fonksiyonu döndür
 
 @app.route("/tradingview", methods=["POST"])
 def tradingview_webhook():
