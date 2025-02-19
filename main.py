@@ -22,7 +22,15 @@ def bybit_balance():
 
     url = "https://api.bybit.com/v5/account/wallet-balance"
     response = requests.get(url, headers=headers)
-    return response.json()
+
+    # API Yanıtını kontrol et
+    if response.status_code != 200:
+        return {"error": f"Bybit API hatası: {response.status_code}", "response_text": response.text}
+    
+    try:
+        return response.json()
+    except Exception as e:
+        return {"error": "JSONDecodeError", "message": str(e), "response_text": response.text}
 
 def place_order(symbol, side, qty, price):
     timestamp = str(int(time.time() * 1000))
