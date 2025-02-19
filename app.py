@@ -45,6 +45,6 @@ def tradingview_webhook():
 
     return jsonify({"success": True, "message": "Emir alındı!"})
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     serve(app, host="0.0.0.0", port=port)
