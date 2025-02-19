@@ -39,11 +39,11 @@ def place_order(symbol, side, qty, price):
     response = requests.post(url, headers=headers, data=params)
     return response.json()
 
-a@app.route("/balance", methods=["GET"])
+@app.route("/balance", methods=["GET"])
 def get_balance():
     return jsonify(bybit_balance())
 
-a@app.route("/tradingview", methods=["POST"])
+@app.route("/tradingview", methods=["POST"])
 def tradingview_webhook():
     data = request.json
     symbol = data.get("symbol")
