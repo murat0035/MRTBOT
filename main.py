@@ -39,7 +39,7 @@ def get_bybit_balance():
     if response.status_code != 200:
         error_message = f"Bybit API hatası: {response.status_code}, {response.text}"
         logging.error(error_message)
-        return jsonify({"error": error_message, "response_text": response.text}), response.status_code # response.text eklendi
+        return jsonify({"error": error_message, "response_text": response.text}), response.status_code
 
     try:
         bybit_response = response.json()
@@ -51,22 +51,21 @@ def get_bybit_balance():
         else:
             error_message = f"Bybit API hatası: {bybit_response.get('ret_msg', 'Bilinmeyen Hata')}"
             logging.error(error_message)
-            return jsonify({"error": error_message, "bybit_response": bybit_response}), 500 # bybit_response eklendi
+            return jsonify({"error": error_message, "bybit_response": bybit_response}), 500
 
     except (KeyError, TypeError) as e:
         error_message = f"Veri işleme hatası: {e}, {response.text}"
         logging.error(error_message)
-        return jsonify({"error": error_message, "response_text": response.text}), 500 # response.text eklendi
+        return jsonify({"error": error_message, "response_text": response.text}), 500
     except json.JSONDecodeError as e:
         error_message = f"JSONDecodeError: {e}, {response.text}"
         logging.error(error_message)
-        return jsonify({"error": error_message, "response_text": response.text}), 500 # response.text eklendi
+        return jsonify({"error": error_message, "response_text": response.text}), 500
     except Exception as e:
         error_message = f"Bilinmeyen bir hata oluştu: {e}, {response.text}"
         logging.error(error_message)
-        return jsonify({"error": error_message, "response_text": response.text}), 500 # response.text eklendi
+        return jsonify({"error": error_message, "response_text": response.text}), 500
 
-# Bybit emir verme fonksiyonu
 def place_bybit_order(symbol, side, qty, price):
     logging.info(f"place_bybit_order fonksiyonu çağrıldı: symbol={symbol}, side={side}, qty={qty}, price={price}")
     try:
@@ -88,9 +87,15 @@ def place_bybit_order(symbol, side, qty, price):
     }
 
     url = "https://api-testnet.bybit.com/v5/order/create"  # Testnet URL'i
-    response = requests.post(url, headers=headers, json={"symbol": symbol, "side": side, "order_type": "Limit", "qty": qty, "price": price, "time_in_force": "GoodTillCancel"})
+    response = requests.post(url, headers=headers, json={
+        "symbol": symbol,
+        "side": side,
+        "order_type": "Limit",
+        "qty": qty,
+        "price": price,
+        "time_in_force": "GoodTillCancel"
+    })
 
-    # Hata kontrolü
     if response.status_code != 200:
         return jsonify({"error": f"Bybit API hatası: {response.status_code}", "response_text": response.text}), response.status_code
 
@@ -107,8 +112,9 @@ def index():
 @app.route("/balance", methods=["GET"])
 def get_balance():
     logging.info("/balance endpoint çağrıldı.")
-    return jsonify(get_bybit_balance())
-# TradingView webhook rotası
+    # Artık get_bybit_balance() zaten jsonify edilmiş response veya dictionary döndürüyor.
+    return get_bybit_balance()
+
 @app.route("/tradingview", methods=["POST"])
 def tradingview_webhook():
     logging.info("/tradingview endpoint çağrıldı.")
@@ -125,7 +131,7 @@ def tradingview_webhook():
         return jsonify({"error": "Eksik veri"}), 400
 
     order_response = place_bybit_order(symbol, side, qty, price)
-    return jsonify(order_response)
+    return order_response
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
