@@ -32,8 +32,6 @@ def bybit_balance():
         return response.json()
     except Exception as e:
         return {"error": "JSONDecodeError", "message": str(e), "response_text": response.text}
-    except Exception as e:
-        return {"error": "JSONDecodeError", "message": str(e), "response_text": response.text}
 
 def place_order(symbol, side, qty, price):
     timestamp = str(int(time.time() * 1000))
@@ -49,7 +47,7 @@ def place_order(symbol, side, qty, price):
     }
 
     url = "https://api.bybit.com/v5/order/create"
-    response = requests.post(url, headers=headers, data=params)
+    response = requests.post(url, headers=headers, json={"symbol": symbol, "side": side, "order_type": "Limit", "qty": qty, "price": price, "time_in_force": "GoodTillCancel"})
     
     if response.status_code != 200:
         return {"error": f"Bybit API hatası: {response.status_code}", "response_text": response.text}
