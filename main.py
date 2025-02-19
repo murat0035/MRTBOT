@@ -27,7 +27,7 @@ def bybit_balance():
         "X-BYBIT-RECV-WINDOW": recv_window
     }
 
-    url = "https://api.bybit.com/v5/account/wallet-balance"
+    url = "https://api-testnet.bybit.com/v5/account/wallet-balance"
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
@@ -51,7 +51,7 @@ def place_order(symbol, side, qty, price):
         "X-BYBIT-RECV-WINDOW": recv_window
     }
 
-    url = "https://api.bybit.com/v5/order/create"
+    url = "https://api-testnet.bybit.com/v5/order/create"
     response = requests.post(url, headers=headers, json={"symbol": symbol, "side": side, "order_type": "Limit", "qty": qty, "price": price, "time_in_force": "GoodTillCancel"})
     
     if response.status_code != 200:
