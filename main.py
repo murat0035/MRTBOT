@@ -1,33 +1,58 @@
 from flask import Flask, request, jsonify
-import os
-from pybit.unified_trading import HTTP
+import requests
+import time
+import hmac
+import hashlib
 
 app = Flask(__name__)
 
-session = HTTP(
-    api_key="MdAeXSsw8CQgRoUN1o",
-    api_secret="ijwrgCRYl3OwOHjbCyUgbfLfdQWtqPys2QcM",
-)
+API_KEY = "MdAeXSsw8CQgRoUN1o"
+SECRET_KEY = "ijwrgCRYl3OwOHjbCyUgbfLfdQWtqPys2QcM"
 
-@app.route("/")
-def home():
-    return "TradingView Bybit Bot Çalışıyor!"
+def bybit_balance():
+    timestamp = str(int(time.time() * 1000))
+    params = ""
+    sign = hmac.new(SECRET_KEY.encode(), (timestamp + API_KEY + params).encode(), hashlib.sha256).hexdigest()
 
-@app.route("/bybit-balance", methods=["GET"])
+    headers = {
+        "X-BYBIT-API-KEY": API_KEY,
+        "X-BYBIT-SIGN": sign,
+        "X-BYBIT-TIMESTAMP": timestamp
+    }
+
+    url = "https://api.bybit.com/v5/account/wallet-balance"
+    response = requests.get(url, headers=headers)
+    return response.json()
+
+def place_order(symbol, side, qty, price):
+    timestamp = str(int(time.time() * 1000))
+    params = f"symbol={symbol}&side={side}&order_type=Limit&qty={qty}&price={price}&time_in_force=GoodTillCancel"
+    sign = hmac.new(SECRET_KEY.encode(), (timestamp + API_KEY + params).encode(), hashlib.sha256).hexdigest()
+
+    headers = {
+        "X-BYBIT-API-KEY": API_KEY,
+        "X-BYBIT-SIGN": sign,
+        "X-BYBIT-TIMESTAMP": timestamp
+    }
+
+    url = "https://api.bybit.com/v5/order/create"
+    response = requests.post(url, headers=headers, data=params)
+    return response.json()
+
+a@app.route("/balance", methods=["GET"])
 def get_balance():
-    try:
-        balance = session.get_wallet_balance(accountType="UNIFIED")
-        return jsonify(balance)
-    except Exception as e:
-        return jsonify({"error": str(e)})
+    return jsonify(bybit_balance())
 
-@app.route("/check-keys", methods=["GET"])
-def check_keys():
-    return jsonify({
-        "BYBIT_API_KEY": os.environ.get("BYBIT_API_KEY"),
-        "BYBIT_API_SECRET": os.environ.get("BYBIT_API_SECRET")
-    })
+a@app.route("/tradingview", methods=["POST"])
+def tradingview_webhook():
+    data = request.json
+    symbol = data.get("symbol")
+    side = data.get("side")
+    qty = data.get("qty")
+    price = data.get("price")
+    
+    order_response = place_order(symbol, side, qty, price)
+    return jsonify(order_response)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=8000)
