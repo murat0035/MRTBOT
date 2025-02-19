@@ -41,8 +41,8 @@ def get_bybit_balance():
     try:
         return response.json()
     except Exception as e:
-        logging.error(f"JSONDecodeError: {e}, Response Text: {response.text}") # Log the error for debugging
-        return jsonify({"error": "JSONDecodeError", "message": str(e)}), 500  # Simplified error message
+        logging.error(f"JSONDecodeError: {e}, Response Text: {response.text}")
+        return jsonify({"error": "JSONDecodeError", "message": str(e)}), 500
 
 def place_bybit_order(symbol, side, qty, price):
     logging.info(f"place_bybit_order fonksiyonu çağrıldı: symbol={symbol}, side={side}, qty={qty}, price={price}")
@@ -73,9 +73,12 @@ def place_bybit_order(symbol, side, qty, price):
     try:
         return response.json()
     except Exception as e:
-        logging.error(f"JSONDecodeError: {e}, Response Text: {response.text}") # Log the error
-        return jsonify({"error": "JSONDecodeError", "message": str(e)}), 500 # Simplified error message
+        logging.error(f"JSONDecodeError: {e}, Response Text: {response.text}")
+        return jsonify({"error": "JSONDecodeError", "message": str(e)}), 500
 
+@app.route("/")  # Ana sayfa rotası
+def index():
+    return "Merhaba Dünya! Bu benim ana sayfam!"
 
 @app.route("/balance", methods=["GET"])
 def get_balance():
@@ -85,7 +88,7 @@ def get_balance():
 @app.route("/tradingview", methods=["POST"])
 def tradingview_webhook():
     logging.info("/tradingview endpoint çağrıldı.")
-    data = request.get_json()  # Use request.get_json() to parse JSON data
+    data = request.get_json()
     if not data:
         return jsonify({"error": "Geçersiz JSON verisi"}), 400
 
@@ -94,7 +97,7 @@ def tradingview_webhook():
     qty = data.get("qty")
     price = data.get("price")
 
-    if not all([symbol, side, qty, price]):  # Check if all required fields are present
+    if not all([symbol, side, qty, price]):
         return jsonify({"error": "Eksik veri"}), 400
 
     order_response = place_bybit_order(symbol, side, qty, price)
