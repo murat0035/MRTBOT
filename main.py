@@ -10,6 +10,11 @@ API_KEY = "MdAeXSsw8CQgRoUN1o"
 SECRET_KEY = "ijwrgCRYl3OwOHjbCyUgbfLfdQWtqPys2QcM"
 
 def bybit_balance():
+    # API Bağlantı Testi
+    test_url = "https://api.bybit.com/v5/market/time"
+    test_response = requests.get(test_url)
+    if test_response.status_code != 200:
+        return {"error": "Bybit API'ye bağlanılamıyor", "response_text": test_response.text}
     timestamp = str(int(time.time() * 1000))
     recv_window = "5000"
     params = f"api_key={API_KEY}&recv_window={recv_window}&timestamp={timestamp}"
