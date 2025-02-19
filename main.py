@@ -11,22 +11,22 @@ logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
-API_KEY = os.environ.get("BYBIT_API_KEY")
-SECRET_KEY = os.environ.get("BYBIT_SECRET_KEY")
+BYBIT_API_KEY = os.environ.get("BYBIT_API_KEY")
+BYBIT_API_SECRET = os.environ.get("BYBIT_API_SECRET")
 
-if not API_KEY or not SECRET_KEY:
-    logging.error("API_KEY veya SECRET_KEY ortam değişkenleri ayarlanmadı!")
+if not BYBIT_API_KEY or not BYBIT_API_SECRET:
+    logging.error("BYBIT_API_KEY veya BYBIT_API_SECRET ortam değişkenleri ayarlanmadı!")
     exit(1)
 
-def bybit_balance():
-    logging.info("bybit_balance fonksiyonu çağrıldı.")
+def get_bybit_balance():
+    logging.info("get_bybit_balance fonksiyonu çağrıldı.")
     timestamp = str(int(time.time() * 1000))
     recv_window = "5000"
-    params = f"api_key={API_KEY}&recv_window={recv_window}&timestamp={timestamp}"
-    sign = hmac.new(SECRET_KEY.encode(), params.encode(), hashlib.sha256).hexdigest()
+    params = f"api_key={BYBIT_API_KEY}&recv_window={recv_window}&timestamp={timestamp}"
+    sign = hmac.new(BYBIT_API_SECRET.encode(), params.encode(), hashlib.sha256).hexdigest()
 
     headers = {
-        "X-BYBIT-API-KEY": API_KEY,
+        "X-BYBIT-API-KEY": BYBIT_API_KEY,
         "X-BYBIT-SIGN": sign,
         "X-BYBIT-TIMESTAMP": timestamp,
         "X-BYBIT-RECV-WINDOW": recv_window
@@ -43,8 +43,8 @@ def bybit_balance():
     except Exception as e:
         return jsonify({"error": "JSONDecodeError", "message": str(e), "response_text": response.text}), 500
 
-def place_order(symbol, side, qty, price):
-    logging.info(f"place_order fonksiyonu çağrıldı: symbol={symbol}, side={side}, qty={qty}, price={price}")
+def place_bybit_order(symbol, side, qty, price):
+    logging.info(f"place_bybit_order fonksiyonu çağrıldı: symbol={symbol}, side={side}, qty={qty}, price={price}")
     try:
         qty = float(qty)
         price = float(price)
@@ -53,11 +53,11 @@ def place_order(symbol, side, qty, price):
 
     timestamp = str(int(time.time() * 1000))
     recv_window = "5000"
-    params = f"api_key={API_KEY}&symbol={symbol}&side={side}&order_type=Limit&qty={qty}&price={price}&time_in_force=GoodTillCancel&recv_window={recv_window}&timestamp={timestamp}"
-    sign = hmac.new(SECRET_KEY.encode(), params.encode(), hashlib.sha256).hexdigest()
+    params = f"api_key={BYBIT_API_KEY}&symbol={symbol}&side={side}&order_type=Limit&qty={qty}&price={price}&time_in_force=GoodTillCancel&recv_window={recv_window}&timestamp={timestamp}"
+    sign = hmac.new(BYBIT_API_SECRET.encode(), params.encode(), hashlib.sha256).hexdigest()
 
     headers = {
-        "X-BYBIT-API-KEY": API_KEY,
+        "X-BYBIT-API-KEY": BYBIT_API_KEY,
         "X-BYBIT-SIGN": sign,
         "X-BYBIT-TIMESTAMP": timestamp,
         "X-BYBIT-RECV-WINDOW": recv_window
@@ -77,7 +77,7 @@ def place_order(symbol, side, qty, price):
 @app.route("/balance", methods=["GET"])
 def get_balance():
     logging.info("/balance endpoint çağrıldı.")
-    return jsonify(bybit_balance())
+    return jsonify(get_bybit_balance())
 
 @app.route("/tradingview", methods=["POST"])
 def tradingview_webhook():
@@ -88,7 +88,7 @@ def tradingview_webhook():
     qty = data.get("qty")
     price = data.get("price")
 
-    order_response = place_order(symbol, side, qty, price)
+    order_response = place_bybit_order(symbol, side, qty, price)
     return jsonify(order_response)
 
 if __name__ == "__main__":
