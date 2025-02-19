@@ -32,7 +32,8 @@ def bybit_balance():
         return response.json()
     except Exception as e:
         return {"error": "JSONDecodeError", "message": str(e), "response_text": response.text}
-
+    except Exception as e:
+        return {"error": "JSONDecodeError", "message": str(e), "response_text": response.text}
 
 def place_order(symbol, side, qty, price):
     timestamp = str(int(time.time() * 1000))
@@ -49,4 +50,29 @@ def place_order(symbol, side, qty, price):
 
     url = "https://api.bybit.com/v5/order/create"
     response = requests.post(url, headers=headers, data=params)
-    return response.json()
+    
+    if response.status_code != 200:
+        return {"error": f"Bybit API hatası: {response.status_code}", "response_text": response.text}
+    
+    try:
+        return response.json()
+    except Exception as e:
+        return {"error": "JSONDecodeError", "message": str(e), "response_text": response.text}
+
+@app.route("/balance", methods=["GET"])
+def get_balance():
+    return jsonify(bybit_balance())
+
+@app.route("/tradingview", methods=["POST"])
+def tradingview_webhook():
+    data = request.json
+    symbol = data.get("symbol")
+    side = data.get("side")
+    qty = data.get("qty")
+    price = data.get("price")
+    
+    order_response = place_order(symbol, side, qty, price)
+    return jsonify(order_response)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
