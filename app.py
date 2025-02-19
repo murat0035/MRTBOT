@@ -10,7 +10,7 @@ import json
 
 logging.basicConfig(level=logging.INFO)
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 BYBIT_API_KEY = os.environ.get("BYBIT_API_KEY")
 BYBIT_API_SECRET = os.environ.get("BYBIT_API_SECRET")
