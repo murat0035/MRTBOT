@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
-BYBIT_API_KEY = os.environ.get("TDc7u64Qqcy7ELJoj8")
-BYBIT_API_SECRET = os.environ.get("iMdfzy4PejLaQqvHRnJWRPBtdgfUe5WmbItF")
+BYBIT_API_KEY = os.environ.get("BYBIT_API_KEY")
+BYBIT_API_SECRET = os.environ.get("BYBIT_API_SECRET")
 
 if not BYBIT_API_KEY or not BYBIT_API_SECRET:
     raise ValueError("BYBIT_API_KEY veya BYBIT_API_SECRET ortam değişkenleri ayarlanmadı!")
