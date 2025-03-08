@@ -1,153 +1,107 @@
-import os
-import logging
-from flask import Flask, request, jsonify
 import requests
 import time
 import hmac
 import hashlib
-from waitress import serve
 import json
 
-logging.basicConfig(level=logging.INFO)
+class BingXAPI:
+    def __init__(self, api_key, api_secret):
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.base_url = "https://open-api.bingx.com"  # ✅ BingX API Base URL
 
-app = Flask(__name__)
+    # ✅ Sunucu IP Adresini Al ve Yazdır
+    def print_server_ip(self):
+        try:
+            response = requests.get("https://api64.ipify.org?format=json")
+            ip_address = response.json().get("ip", "Bilinmeyen IP")
+            print(f"📌 Sunucunun IP Adresi: {ip_address}")
+        except Exception as e:
+            print(f"⚠️ IP adresi alınamadı: {e}")
 
-BYBIT_API_KEY = os.environ.get("BYBIT_API_KEY")
-BYBIT_API_SECRET = os.environ.get("BYBIT_API_SECRET")
+    # ✅ Sunucu Saatini Yazdır ve Doğru Timestamp Kullan
+    def get_server_time(self):
+        timestamp = int(time.time() * 1000)  # ✅ UNIX Timestamp (milisaniye cinsinden)
+        print(f"📌 Sunucu Saati: {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())} UTC")
+        print(f"📌 Timestamp (ms): {timestamp}")
+        return timestamp
 
-if not BYBIT_API_KEY or not BYBIT_API_SECRET:
-    raise ValueError("BYBIT_API_KEY veya BYBIT_API_SECRET ortam değişkenleri ayarlanmadı!")
+    # ✅ İmza (Signature) Oluşturma
+    def generate_signature(self, params):
+        sorted_params = sorted(params.items())
+        query_string = "&".join([f"{k}={v}" for k, v in sorted_params])
+        signature = hmac.new(self.api_secret.encode(), query_string.encode(), hashlib.sha256).hexdigest()
+        return signature
 
-def create_signature(params):
-    """İmza oluşturma fonksiyonu."""
-    secret_bytes = BYBIT_API_SECRET.encode('utf-8')
-    params_bytes = params.encode('utf-8')
-    sign = hmac.new(secret_bytes, params_bytes, hashlib.sha256).hexdigest()
-    return sign
+    # ✅ API İsteklerini Gönderme İşlemi
+    def send_request(self, method, endpoint, params=None):
+        if params is None:
+            params = {}
+        params["timestamp"] = self.get_server_time()  # ✅ Doğru timestamp kullanılıyor
+        params["signature"] = self.generate_signature(params)
 
-def get_bybit_balance():
-    logging.info("get_bybit_balance fonksiyonu çağrıldı.")
-    timestamp = str(int(time.time() * 1000))
-    recv_window = "5000"
-    params = f"api_key={BYBIT_API_KEY}&recv_window={recv_window}&timestamp={timestamp}"
-    sign = create_signature(params)
+        url = f"{self.base_url}{endpoint}"
+        headers = {
+            "X-BX-APIKEY": self.api_key,
+            "Content-Type": "application/json"
+        }
 
-    headers = {
-        "X-BYBIT-API-KEY": BYBIT_API_KEY,
-        "X-BYBIT-SIGN": sign,
-        "X-BYBIT-TIMESTAMP": timestamp,
-        "X-BYBIT-RECV-WINDOW": recv_window
-    }
+        try:
+            if method == "GET":
+                response = requests.get(url, headers=headers, params=params)
+            elif method == "POST":
+                response = requests.post(url, headers=headers, json=params)
+            else:
+                raise ValueError("Geçersiz HTTP metodu")
 
-    url = "https://api-testnet.bybit.com/v5/account/wallet-balance"
-    response = requests.get(url, headers=headers)
+            print(f"🔍 API Yanıt Kodu: {response.status_code}")
+            print(f"🔍 API Yanıtı: {response.text}")
 
-    if response.status_code != 200:
-        error_message = f"Bybit API hatası: {response.status_code}, {response.text}"
-        logging.error(error_message)
-        return jsonify({"error": error_message}), response.status_code
+            return response.json()
+        except Exception as e:
+            print(f"❌ API İsteği Başarısız: {e}")
+            return None
 
-    try:
-        bybit_response = response.json()
-        if bybit_response.get("ret_code") == 0:
-            result = bybit_response.get("result", {})
-            usdt_balance = result.get("USDT", {}).get("available", 0)
-            return {"balance": usdt_balance}
-        else:
-            error_message = bybit_response.get('ret_msg', 'Bilinmeyen Hata')
-            logging.error(error_message)
-            return jsonify({"error": error_message}), 500
-    except (KeyError, TypeError, json.JSONDecodeError) as e:
-        error_message = f"Veri işleme hatası: {e}, {response.text}"
-        logging.error(error_message)
-        return jsonify({"error": error_message}), 500
-    except Exception as e:
-        error_message = f"Bilinmeyen bir hata oluştu: {e}, {response.text}"
-        logging.error(error_message)
-        return jsonify({"error": error_message}), 500
+    # ✅ Hesap Bakiyesini Al (DOĞRU ENDPOINT KULLANILIYOR)
+    def get_account_balance(self):
+        return self.send_request("GET", "/v1/user/getBalance")
 
-def place_bybit_order(symbol, side, qty, price):
-    logging.info(f"place_bybit_order fonksiyonu çağrıldı: symbol={symbol}, side={side}, qty={qty}, price={price}")
-    try:
-        qty = float(qty) if qty is not None else None
-        price = float(price) if price is not None else None
-        if qty is None or price is None:
-            return jsonify({"error": "qty veya price eksik veya hatalı"}), 400
-    except ValueError:
-        return jsonify({"error": "Geçersiz qty veya price formatı"}), 400
+    # ✅ Piyasa Fiyatını Al (DOĞRU ENDPOINT KULLANILIYOR)
+    def get_market_price(self, symbol):
+        return self.send_request("GET", "/v1/market/getPrice", {"symbol": symbol})
 
-    timestamp = str(int(time.time() * 1000))
-    recv_window = "5000"
-    params = f"api_key={BYBIT_API_KEY}&symbol={symbol}&side={side}&order_type=Limit&qty={qty}&price={price}&time_in_force=GoodTillCancel&recv_window={recv_window}&timestamp={timestamp}"
-    sign = create_signature(params)
+    # ✅ Limit Emir Gönder (DOĞRU ENDPOINT KULLANILIYOR)
+    def place_order(self, symbol, side, qty, price):
+        params = {
+            "symbol": symbol,
+            "side": side,
+            "orderType": "LIMIT",
+            "quantity": qty,
+            "price": price,
+            "timeInForce": "GTC"  # Good Till Cancel
+        }
+        return self.send_request("POST", "/v1/trade/order", params)
 
-    headers = {
-        "X-BYBIT-API-KEY": BYBIT_API_KEY,
-        "X-BYBIT-SIGN": sign,
-        "X-BYBIT-TIMESTAMP": timestamp,
-        "X-BYBIT-RECV-WINDOW": recv_window
-    }
+# ✅ API Kullanımı
+API_KEY = "EK7Om3CNprZDssrHO5Re4UayBvhlGUOhfpZoU7lBnwupWFNWmlXIZHpGH9cAPoKUpEZ2VcuMBurF03BezapA"  # 🔹 BingX API Key (Güvenlik için .env kullanılabilir)
+API_SECRET = "oGykNZFCV6h0eHVLlrvUcULMcrGyv7yc6MdX03smUQS3mffZWbSWIutr8xSNcuHE072r8seMtsjKbBP3NkKLA"  # 🔹 BingX Secret Key
 
-    url = "https://api-testnet.bybit.com/v5/order/create"  # Testnet URL'i
-    response = requests.post(url, headers=headers, json={
-        "symbol": symbol,
-        "side": side,
-        "order_type": "Limit",
-        "qty": qty,
-        "price": price,
-        "time_in_force": "GoodTillCancel"
-    })
+bingx = BingXAPI(API_KEY, API_SECRET)
 
-    if response.status_code != 200:
-        error_message = f"Bybit API hatası: {response.status_code}, {response.text}"
-        logging.error(error_message)
-        return jsonify({"error": error_message}), response.status_code
+# 📌 1️⃣ Sunucu IP Adresini Yazdır
+bingx.print_server_ip()
 
-    try:
-        bybit_response = response.json()
-        if bybit_response.get("ret_code") == 0:
-            order_id = bybit_response.get("result", {}).get("order_id")
-            return jsonify({"success": True, "order_id": order_id})
-        else:
-            error_message = bybit_response.get("ret_msg", "Bilinmeyen bir hata")
-            logging.error(f"Bybit API Hatası: {error_message}")
-            return jsonify({"error": error_message}), 500
-    except json.JSONDecodeError as e:
-        error_message = f"JSONDecodeError: {e}, Response Text: {response.text}"
-        logging.error(error_message)
-        return jsonify({"error": "JSONDecodeError", "message": str(e)}), 500
-    except Exception as e:
-        error_message = f"Bilinmeyen bir hata oluştu: {e}, Response Text: {response.text}"
-        logging.error(error_message)
-        return jsonify({"error": "Bilinmeyen bir hata", "message": str(e)}), 500
+# 📌 2️⃣ Sunucu Saatini Kontrol Et ve Senkronize Et
+bingx.get_server_time()
 
-@app.route("/")
-def index():
-    return "Merhaba Dünya! Bu benim ana sayfam!"
+# 📌 3️⃣ Hesap Bakiyesini Al (DÜZELTİLDİ)
+balance = bingx.get_account_balance()
+print(json.dumps(balance, indent=4))
 
-@app.route("/balance", methods=["GET"])
-def get_balance():
-    logging.info("/balance endpoint çağrıldı.")
-    return get_bybit_balance()
+# 📌 4️⃣ Piyasa Fiyatını Al (BTCUSDT) (DÜZELTİLDİ)
+ticker = bingx.get_market_price("BTCUSDT")
+print(json.dumps(ticker, indent=4))
 
-@app.route("/tradingview", methods=["POST"])
-def tradingview_webhook():
-    logging.info("/tradingview endpoint çağrıldı.")
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "Geçersiz JSON verisi"}), 400
-
-    symbol = data.get("symbol")
-    side = data.get("side")
-    qty = data.get("qty")
-    price = data.get("price")
-
-    if not all([symbol, side, qty, price]):
-        return jsonify({"error": "Eksik veri"}), 400
-
-    order_response = place_bybit_order(symbol, side, qty, price)
-    return order_response
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    serve(app, host="0.0.0.0", port=port)
+# 📌 5️⃣ Limit Emir Gönder (BTCUSDT, BUY, 0.01 BTC, 50000 USDT fiyatında) (DÜZELTİLDİ)
+order = bingx.place_order("BTCUSDT", "BUY", "0.01", "50000")
+print(json.dumps(order, indent=4))
